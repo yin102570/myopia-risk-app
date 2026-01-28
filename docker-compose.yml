@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  myopia-risk-ai:
+    build: .
+    container_name: myopia-risk-ai
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend/models:/app/models
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>API测试页面</h1>
+    <button onclick="testAPI()">测试预测API</button>
+    <div id="result">点击按钮开始测试...</div>
+
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '正在测试...';
+            
+            const testData = {
+                age: 12,
+                gender: 1,
+                axial_length: 25.5,
+                choroidal_thickness: 250,
+                sphere: -3.5,
+                cylinder: -0.75,
+                parent_myopia: 1,
+                outdoor_hours: 2,
+                near_work_hours: 6,
+                screen_time_hours: 3,
+                genetic_risk_score: 65
+            };
+
+            try {
+                console.log('发送请求到:', 'http://154.8.203.14:3000/api/predict');
+                console.log('请求数据:', testData);
+                
+                const response = await fetch('http://154.8.203.14:3000/api/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                console.log('响应状态:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('响应数据:', data);
+                
+                resultDiv.innerHTML = '<span class="success">测试成功!</span>\n\n' + 
+                    '风险等级: ' + data.prediction.risk_label + '\n' +
+                    '高风险概率: ' + (data.prediction.probabilities.high_risk * 100).toFixed(1) + '%\n\n' +
+                    '完整响应:\n' + JSON.stringify(data, null, 2);
+            } catch (error) {
+                console.error('错误:', error);
+                resultDiv.innerHTML = '<span class="error">测试失败!</span>\n\n' + 
+                    '错误信息: ' + error.message + '\n\n' +
+                    '请检查:\n' +
+                    '1. 浏览器控制台是否有CORS错误\n' +
+                    '2. 后端服务是否正常运行\n' +
+                    '3. 网络连接是否正常';
+            }
+        }
+    </script>
+</body>
+</html>

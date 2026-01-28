@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务查询 - AI近视风险预测</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        .search-section {
+            padding: 30px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .search-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        .task-list {
+            padding: 30px;
+        }
+        .task-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+        .task-card.pending {
+            border-left-color: #ffc107;
+        }
+        .task-card.running {
+            border-left-color: #17a2b8;
+        }
+        .task-card.completed {
+            border-left-color: #28a745;
+        }
+        .task-card.failed {
+            border-left-color: #dc3545;
+        }
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .task-id {
+            font-weight: 600;
+            color: #333;
+            font-size: 12px;
+        }
+        .task-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status-running {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .task-progress {
+            margin-bottom: 12px;
+        }
+        .progress-bar {
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s;
+        }
+        .progress-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        .task-message {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .task-time {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 12px;
+        }
+        .task-result {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 13px;
+        }
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        .result-label {
+            color: #666;
+        }
+        .result-value {
+            font-weight: 600;
+            color: #333;
+        }
+        .download-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+        }
+        .download-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+        .download-files {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .download-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: #667eea;
+            color: white;
+            border-radius: 6px;
+            font-size: 12px;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        .download-btn:hover {
+            background: #5568d3;
+            transform: translateY(-1px);
+        }
+        .download-btn.model {
+            background: #28a745;
+        }
+        .download-btn.data {
+            background: #17a2b8;
+        }
+        .download-btn.metadata {
+            background: #6c757d;
+        }
+        .file-size {
+            font-size: 11px;
+            color: rgba(255,255,255,0.8);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        .config-info {
+            background: #e9ecef;
+            padding: 10px 14px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            font-size: 12px;
+            color: #495057;
+        }
+        .config-item {
+            display: inline-block;
+            margin-right: 15px;
+        }
+        .config-item span {
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 任务查询中心</h1>
+            <p>查看数据生成和模型训练任务的执行状态及下载文件</p>
+        </div>
+        
+        <div class="search-section">
+            <div class="search-box">
+                <input type="text" class="search-input" id="taskIdInput" placeholder="输入任务ID（如: task-1769578708-29ba74ef）">
+                <button class="btn btn-primary" onclick="searchTask()">查询任务</button>
+                <button class="btn btn-secondary" onclick="listAllTasks()">显示所有任务</button>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-secondary" style="flex: 1;" onclick="listTasksByType('data_generate')">数据生成任务</button>
+                <button class="btn btn-secondary" style="flex: 1;" onclick="listTasksByType('model_train')">模型训练任务</button>
+            </div>
+        </div>
+        
+        <div class="task-list" id="taskList">
+            <div class="empty-state">
+                <div class="empty-icon">🔍</div>
+                <p>输入任务ID或点击上方按钮查看任务</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        
+        function formatTime(isoTime) {
+            if (!isoTime) return '-';
+            const date = new Date(isoTime);
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function getStatusClass(status) {
+            return `status-${status}`;
+        }
+        
+        function getStatusText(status) {
+            const statusMap = {
+                'pending': '等待中',
+                'running': '执行中',
+                'completed': '已完成',
+                'failed': '失败'
+            };
+            return statusMap[status] || status;
+        }
+        
+        function getTypeText(type) {
+            const typeMap = {
+                'data_generate': '数据生成',
+                'model_train': '模型训练'
+            };
+            return typeMap[type] || type;
+        }
+        
+        function renderConfig(params) {
+            if (!params || Object.keys(params).length === 0) return '';
+            
+            let html = '<div class="config-info">';
+            for (const [key, value] of Object.entries(params)) {
+                const labelMap = {
+                    'n_samples': '样本数',
+                    'random_seed': '随机种子',
+                    'test_size': '测试集',
+                    'n_estimators': '树数量',
+                    'max_depth': '最大深度',
+                    'distribution_type': '分布类型',
+                    'risk_weights': '风险权重'
+                };
+                const label = labelMap[key] || key;
+                html += `<div class="config-item"><span>${label}:</span> ${value}</div>`;
+            }
+            html += '</div>';
+            return html;
+        }
+        
+        function renderTaskCard(task) {
+            let resultHtml = '';
+            let downloadHtml = '';
+            
+            if (task.files && task.files.length > 0 && task.status === 'completed') {
+                downloadHtml = `
+                    <div class="download-section">
+                        <div class="download-title">📦 可下载文件：</div>
+                        <div class="download-files">
+                            ${task.files.map(file => `
+                                <a href="${file.url}" class="download-btn ${file.type}" download="${file.name}">
+                                    ${file.type === 'model' ? '🤖' : file.type === 'data' ? '📊' : '📄'} 
+                                    ${file.name}
+                                    <span class="file-size">${formatFileSize(file.size)}</span>
+                                </a>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            if (task.result && task.status === 'completed') {
+                if (task.type === 'data_generate') {
+                    resultHtml = `
+                        <div class="task-result">
+                            <div class="result-item">
+                                <span class="result-label">生成样本数:</span>
+                                <span class="result-value">${task.result.samples_generated}</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-label">低风险:</span>
+                                <span class="result-value">${task.result.risk_distribution.low}</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-label">中风险:</span>
+                                <span class="result-value">${task.result.risk_distribution.medium}</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-label">高风险:</span>
+                                <span class="result-value">${task.result.risk_distribution.high}</span>
+                            </div>
+                        </div>
+                    `;
+                } else if (task.type === 'model_train') {
+                    resultHtml = `
+                        <div class="task-result">
+                            <div class="result-item">
+                                <span class="result-label">准确率:</span>
+                                <span class="result-value">${(task.result.accuracy * 100).toFixed(2)}%</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-label">训练样本:</span>
+                                <span class="result-value">${task.result.training_samples}</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-label">测试样本:</span>
+                                <span class="result-value">${task.result.test_samples}</span>
+                            </div>
+                            ${task.result.test_size ? `
+                                <div class="result-item">
+                                    <span class="result-label">测试集比例:</span>
+                                    <span class="result-value">${(task.result.test_size * 100).toFixed(0)}%</span>
+                                </div>
+                            ` : ''}
+                            ${task.result.random_seed ? `
+                                <div class="result-item">
+                                    <span class="result-label">随机种子:</span>
+                                    <span class="result-value">${task.result.random_seed}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }
+            }
+            
+            return `
+                <div class="task-card ${task.status}">
+                    <div class="task-header">
+                        <span class="task-id">📋 ${task.id}</span>
+                        <span class="task-status ${getStatusClass(task.status)}">${getStatusText(task.status)}</span>
+                    </div>
+                    ${renderConfig(task.params)}
+                    <div class="task-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${task.progress}%"></div>
+                        </div>
+                        <div class="progress-text">进度: ${task.progress}% | 类型: ${getTypeText(task.type)}</div>
+                    </div>
+                    <div class="task-message">${task.message}</div>
+                    <div class="task-time">创建时间: ${formatTime(task.created_at)}</div>
+                    ${resultHtml}
+                    ${downloadHtml}
+                </div>
+            `;
+        }
+        
+        function showLoading() {
+            document.getElementById('taskList').innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>加载中...</p></div>';
+        }
+        
+        function showError(message) {
+            document.getElementById('taskList').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">❌</div>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+        
+        async function searchTask() {
+            const taskId = document.getElementById('taskIdInput').value.trim();
+            if (!taskId) {
+                showError('请输入任务ID');
+                return;
+            }
+            
+            showLoading();
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/tasks/${taskId}`);
+                if (!response.ok) {
+                    throw new Error('任务不存在');
+                }
+                const task = await response.json();
+                document.getElementById('taskList').innerHTML = renderTaskCard(task);
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+        
+        async function listAllTasks() {
+            showLoading();
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/tasks?limit=10`);
+                const data = await response.json();
+                
+                if (data.tasks.length === 0) {
+                    showError('暂无任务记录');
+                    return;
+                }
+                
+                document.getElementById('taskList').innerHTML = data.tasks.map(renderTaskCard).join('');
+            } catch (error) {
+                showError('获取任务列表失败');
+            }
+        }
+        
+        async function listTasksByType(type) {
+            showLoading();
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/tasks?type=${type}&limit=10`);
+                const data = await response.json();
+                
+                if (data.tasks.length === 0) {
+                    showError('暂无相关任务记录');
+                    return;
+                }
+                
+                document.getElementById('taskList').innerHTML = data.tasks.map(renderTaskCard).join('');
+            } catch (error) {
+                showError('获取任务列表失败');
+            }
+        }
+        
+        // 回车键触发搜索
+        document.getElementById('taskIdInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchTask();
+            }
+        });
+    </script>
+</body>
+</html>

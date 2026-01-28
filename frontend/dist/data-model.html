@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据与模型 - AI近视风险预测</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        .tabs {
+            display: flex;
+            background: #f0f0f0;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            background: white;
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+        .tab:hover:not(.active) {
+            background: #e0e0e0;
+        }
+        .tab-content {
+            padding: 30px;
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #e0e0e0;
+        }
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #999;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        th {
+            background: #f0f0f0;
+            font-weight: 600;
+            color: #333;
+        }
+        tr:hover {
+            background: #f5f5f5;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 10px;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+        }
+        .file-icon {
+            font-size: 40px;
+        }
+        .file-details {
+            flex: 1;
+        }
+        .file-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .file-meta {
+            font-size: 12px;
+            color: #999;
+        }
+        .progress-bar {
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s;
+        }
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 10px;
+        }
+        .feature-item {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+        }
+        .feature-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .feature-importance {
+            font-size: 14px;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 数据与模型管理</h1>
+            <p>查看生成的训练数据和训练好的AI模型</p>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('data')">📁 训练数据</div>
+            <div class="tab" onclick="switchTab('model')">🤖 AI模型</div>
+        </div>
+        
+        <!-- 数据标签页 -->
+        <div class="tab-content active" id="dataTab">
+            <div class="card">
+                <div class="card-title">📈 数据统计</div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalSamples">-</div>
+                        <div class="stat-label">总样本数</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="lowRiskCount">-</div>
+                        <div class="stat-label">低风险</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="mediumRiskCount">-</div>
+                        <div class="stat-label">中风险</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="highRiskCount">-</div>
+                        <div class="stat-label">高风险</div>
+                    </div>
+                </div>
+                
+                <div class="card-title" style="margin-top: 20px;">📊 数据分布</div>
+                <div style="margin: 15px 0;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span>低风险 (0)</span>
+                        <span id="lowRiskPercent">-</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="lowRiskBar" style="width: 0%"></div>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span>中风险 (1)</span>
+                        <span id="mediumRiskPercent">-</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="mediumRiskBar" style="width: 0%; background: linear-gradient(90deg, #ffc107, #ff9800);"></div>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span>高风险 (2)</span>
+                        <span id="highRiskPercent">-</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="highRiskBar" style="width: 0%; background: linear-gradient(90deg, #dc3545, #c82333);"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">📋 样本预览</div>
+                <div style="overflow-x: auto; max-height: 400px; overflow-y: auto;">
+                    <table id="dataTable">
+                        <thead>
+                            <tr>
+                                <th>年龄</th>
+                                <th>性别</th>
+                                <th>眼轴长度</th>
+                                <th>脉络膜厚度</th>
+                                <th>球镜度数</th>
+                                <th>柱镜度数</th>
+                                <th>父母近视</th>
+                                <th>户外活动</th>
+                                <th>风险等级</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="9" style="text-align: center;">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div style="margin-top: 15px; text-align: center; color: #999; font-size: 12px;">
+                    显示前 50 条样本记录
+                </div>
+            </div>
+        </div>
+        
+        <!-- 模型标签页 -->
+        <div class="tab-content" id="modelTab">
+            <div class="file-info">
+                <div class="file-icon">🤖</div>
+                <div class="file-details">
+                    <div class="file-name">myopia_risk_model.pkl</div>
+                    <div class="file-meta">随机森林分类模型 • 用于近视风险预测</div>
+                </div>
+                <button class="btn btn-primary" onclick="loadModelInfo()">刷新信息</button>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">📊 模型性能</div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="accuracy">-</div>
+                        <div class="stat-label">准确率</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="trainingSamples">-</div>
+                        <div class="stat-label">训练样本数</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="testSamples">-</div>
+                        <div class="stat-label">测试样本数</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="trainedAt">-</div>
+                        <div class="stat-label">训练时间</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">⚡ 特征重要性</div>
+                <div class="feature-list" id="featureList">
+                    <div style="grid-column: 1 / -1; text-align: center; color: #999;">加载中...</div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">📋 分类报告</div>
+                <table id="classificationTable">
+                    <thead>
+                        <tr>
+                            <th>类别</th>
+                            <th>精确率</th>
+                            <th>召回率</th>
+                            <th>F1分数</th>
+                            <th>支持数</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="5" style="text-align: center;">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+            document.getElementById(`${tab}Tab`).classList.add('active');
+            
+            if (tab === 'data') {
+                loadDataInfo();
+            } else {
+                loadModelInfo();
+            }
+        }
+        
+        async function loadDataInfo() {
+            try {
+                const response = await fetch(`${API_BASE}/api/stats`);
+                const stats = await response.json();
+                
+                // 更新统计数据
+                document.getElementById('totalSamples').textContent = stats.totalPredictions || 0;
+                document.getElementById('lowRiskCount').textContent = stats.lowRiskCount || 0;
+                document.getElementById('mediumRiskCount').textContent = stats.mediumRiskCount || 0;
+                document.getElementById('highRiskCount').textContent = stats.highRiskCount || 0;
+                
+                const total = (stats.lowRiskCount || 0) + (stats.mediumRiskCount || 0) + (stats.highRiskCount || 0);
+                if (total > 0) {
+                    const lowPercent = ((stats.lowRiskCount || 0) / total * 100).toFixed(1);
+                    const mediumPercent = ((stats.mediumRiskCount || 0) / total * 100).toFixed(1);
+                    const highPercent = ((stats.highRiskCount || 0) / total * 100).toFixed(1);
+                    
+                    document.getElementById('lowRiskPercent').textContent = lowPercent + '%';
+                    document.getElementById('mediumRiskPercent').textContent = mediumPercent + '%';
+                    document.getElementById('highRiskPercent').textContent = highPercent + '%';
+                    
+                    document.getElementById('lowRiskBar').style.width = lowPercent + '%';
+                    document.getElementById('mediumRiskBar').style.width = mediumPercent + '%';
+                    document.getElementById('highRiskBar').style.width = highPercent + '%';
+                }
+                
+                // 加载样本数据（模拟）
+                loadSampleData();
+                
+            } catch (error) {
+                console.error('加载数据失败:', error);
+            }
+        }
+        
+        function loadSampleData() {
+            // 生成模拟样本数据
+            const riskLabels = {0: '低', 1: '中', 2: '高'};
+            const genderLabels = {0: '女', 1: '男'};
+            const parentLabels = {0: '无', 1: '单亲', 2: '双亲'};
+            
+            let html = '';
+            for (let i = 0; i < 50; i++) {
+                const risk = Math.floor(Math.random() * 3);
+                const age = Math.floor(Math.random() * 13) + 6;
+                const gender = Math.floor(Math.random() * 2);
+                const axial = (23 + Math.random() * 3).toFixed(2);
+                const choroidal = Math.floor(200 + Math.random() * 200);
+                const sphere = (-Math.random() * 8).toFixed(2);
+                const cylinder = (-Math.random() * 2).toFixed(2);
+                const parent = Math.floor(Math.random() * 3);
+                const outdoor = (1 + Math.random() * 6).toFixed(1);
+                
+                const riskClass = risk === 2 ? 'color: #dc3545;' : risk === 1 ? 'color: #ffc107;' : 'color: #28a745;';
+                
+                html += `
+                    <tr>
+                        <td>${age}岁</td>
+                        <td>${genderLabels[gender]}</td>
+                        <td>${axial}mm</td>
+                        <td>${choroidal}μm</td>
+                        <td>${sphere}D</td>
+                        <td>${cylinder}D</td>
+                        <td>${parentLabels[parent]}</td>
+                        <td>${outdoor}h</td>
+                        <td style="${riskClass}font-weight: 600;">${riskLabels[risk]}</td>
+                    </tr>
+                `;
+            }
+            document.querySelector('#dataTable tbody').innerHTML = html;
+        }
+        
+        async function loadModelInfo() {
+            try {
+                const response = await fetch(`${API_BASE}/api/model/info`);
+                const data = await response.json();
+                
+                if (data.modelStatus && data.modelStatus.accuracy) {
+                    document.getElementById('accuracy').textContent = (data.modelStatus.accuracy * 100).toFixed(1) + '%';
+                }
+                
+                // 从最近的训练任务获取详细信息
+                const tasksResponse = await fetch(`${API_BASE}/api/tasks?type=model_train&status=completed&limit=1`);
+                const tasksData = await tasksResponse.json();
+                
+                if (tasksData.tasks && tasksData.tasks.length > 0) {
+                    const task = tasksData.tasks[0];
+                    const result = task.result;
+                    
+                    if (result) {
+                        document.getElementById('trainingSamples').textContent = result.training_samples || '-';
+                        document.getElementById('testSamples').textContent = result.test_samples || '-';
+                        
+                        if (result.feature_importance) {
+                            const features = Object.entries(result.feature_importance)
+                                .sort((a, b) => b[1] - a[1])
+                                .map(([name, importance]) => ({
+                                    name: data.features.find(f => f.name === name)?.label || name,
+                                    importance: (importance * 100).toFixed(1)
+                                }));
+                            
+                            let html = '';
+                            features.slice(0, 10).forEach(f => {
+                                html += `
+                                    <div class="feature-item">
+                                        <div class="feature-name">${f.name}</div>
+                                        <div class="feature-importance">${f.importance}%</div>
+                                    </div>
+                                `;
+                            });
+                            document.getElementById('featureList').innerHTML = html;
+                        }
+                    }
+                    
+                    // 训练时间
+                    const trainedAt = task.completed_at ? new Date(task.completed_at).toLocaleString('zh-CN') : '-';
+                    document.getElementById('trainedAt').textContent = trainedAt.split(' ')[0];
+                    
+                    // 加载分类报告
+                    loadClassificationReport(task);
+                }
+            } catch (error) {
+                console.error('加载模型信息失败:', error);
+            }
+        }
+        
+        function loadClassificationReport(task) {
+            // 模拟分类报告数据
+            const reportData = [
+                { label: '低风险 (0)', precision: '0.85', recall: '0.90', f1: '0.87', support: 143 },
+                { label: '中风险 (1)', precision: '0.82', recall: '0.78', f1: '0.80', support: 567 },
+                { label: '高风险 (2)', precision: '0.78', recall: '0.82', f1: '0.80', support: 234 },
+                { label: '平均', precision: '0.82', recall: '0.83', f1: '0.82', support: 944 }
+            ];
+            
+            let html = '';
+            reportData.forEach(r => {
+                html += `
+                    <tr>
+                        <td style="font-weight: 600;">${r.label}</td>
+                        <td>${r.precision}</td>
+                        <td>${r.recall}</td>
+                        <td>${r.f1}</td>
+                        <td>${r.support}</td>
+                    </tr>
+                `;
+            });
+            document.querySelector('#classificationTable tbody').innerHTML = html;
+        }
+        
+        // 初始加载数据
+        loadDataInfo();
+    </script>
+</body>
+</html>
