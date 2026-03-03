@@ -231,14 +231,14 @@ def generate_pdf_report(input_data, risk_score, risk_level, advice, risk_prob):
     
     data_table = Table(data_table_data, colWidths=[2*inch, 2*inch])
     data_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (1, 0), colors.whitesmoke),
+        ('BACKGROUND', (0, 0), (1, 0), '#CCCCCC'),
+        ('TEXTCOLOR', (0, 0), (1, 0), '#000000'),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, 0), 12),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ('BACKGROUND', (0, 1), (-1, -1), '#F5F5DC'),
+        ('GRID', (0, 0), (-1, -1), 1, '#000000')
     ]))
     story.append(data_table)
     story.append(Spacer(1, 0.3*inch))
