@@ -3,6 +3,17 @@ import pandas as pd
 import joblib
 import numpy as np
 import time
+from datetime import datetime
+import plotly.graph_objects as go
+import io
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.lib.units import inch
+import base64
+import tempfile
+import os
 
 # ===================== 1. 性能优化：全局配置 + 缓存强化 =====================
 # 页面配置（提前加载，减少渲染延迟）
@@ -80,6 +91,165 @@ def fill_example_data(risk_type):
             "prop_hypoxia": 0.12, "prop_inflammation": 0.15, "prop_DA": 0.18,
             "prop_metabolism": 0.28, "prop_defocus": 0.17, "RORA": 28.0
         }
+
+
+def create_radar_chart(input_data, risk_score):
+    """创建雷达图"""
+    # 提取关键指标
+    metrics = ['缺氧相关(HIF1α)', '炎症相关(IL1β)', 'MMP2', '多巴胺(DA)', 
+               '乳酸(Lactate)', 'RORA']
+    values = [
+        input_data['HIF1α'][0] / 50 * 100,
+        input_data['IL1β'][0] / 20 * 100,
+        input_data['MMP2'][0] / 1.2 * 100,
+        input_data['DA'][0] / 5 * 100,
+        input_data['Lactate'][0] / 3 * 100,
+        input_data['RORA'][0] / 30 * 100
+    ]
+    
+    # 亚型占比
+    subtype_metrics = ['缺氧亚型', '炎症亚型', '多巴胺亚型', '代谢亚型', '离焦亚型']
+    subtype_values = [
+        input_data['prop_hypoxia'][0] * 400,
+        input_data['prop_inflammation'][0] * 400,
+        input_data['prop_DA'][0] * 400,
+        input_data['prop_metabolism'][0] * 400,
+        input_data['prop_defocus'][0] * 400
+    ]
+    
+    # 创建雷达图
+    fig1 = go.Figure(data=go.Scatterpolar(
+        r=values,
+        theta=metrics,
+        fill='toself',
+        name='关键指标',
+        line_color='#3498db',
+        fillcolor='rgba(52, 152, 219, 0.3)'
+    ))
+    
+    fig1.update_layout(
+        polar=dict(
+            radialaxis=dict(
+                visible=True,
+                range=[0, 100]
+            )
+        ),
+        showlegend=True,
+        title="关键指标雷达图",
+        height=400
+    )
+    
+    fig2 = go.Figure(data=go.Scatterpolar(
+        r=subtype_values,
+        theta=subtype_metrics,
+        fill='toself',
+        name='亚型占比',
+        line_color='#e74c3c',
+        fillcolor='rgba(231, 76, 60, 0.3)'
+    ))
+    
+    fig2.update_layout(
+        polar=dict(
+            radialaxis=dict(
+                visible=True,
+                range=[0, 100]
+            )
+        ),
+        showlegend=True,
+        title="亚型占比雷达图",
+        height=400
+    )
+    
+    return fig1, fig2
+
+
+def generate_pdf_report(input_data, risk_score, risk_level, advice, risk_prob):
+    """生成PDF报告"""
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    styles = getSampleStyleSheet()
+    story = []
+    
+    # 标题
+    title = Paragraph("近视风险评估报告", styles['Title'])
+    story.append(title)
+    story.append(Spacer(1, 0.2*inch))
+    
+    # 报告时间
+    date_str = datetime.now().strftime("%Y年%m月%d日 %H:%M:%S")
+    date_para = Paragraph(f"<b>评估时间：</b>{date_str}", styles['Normal'])
+    story.append(date_para)
+    story.append(Spacer(1, 0.2*inch))
+    
+    # 风险评分
+    if risk_score >= 70:
+        risk_color_name = "red"
+    elif risk_score >= 30:
+        risk_color_name = "orange"
+    else:
+        risk_color_name = "green"
+    
+    score_title = Paragraph(f"<b>风险评分：</b><font color='{risk_color_name}'>{risk_score}分</font>", styles['Normal'])
+    story.append(score_title)
+    
+    level_title = Paragraph(f"<b>风险等级：</b><font color='{risk_color_name}'>{risk_level}</font>", styles['Normal'])
+    story.append(level_title)
+    story.append(Spacer(1, 0.2*inch))
+    
+    # 概率详情
+    prob_para = Paragraph(f"<b>高危概率：</b>{risk_prob*100:.1f}%", styles['Normal'])
+    story.append(prob_para)
+    prob_para2 = Paragraph(f"<b>低危概率：</b>{(1-risk_prob)*100:.1f}%", styles['Normal'])
+    story.append(prob_para2)
+    story.append(Spacer(1, 0.3*inch))
+    
+    # 建议
+    advice_title = Paragraph("<b>专业建议：</b>", styles['Heading3'])
+    story.append(advice_title)
+    advice_para = Paragraph(advice.replace("⚠️", "").replace("🔔", "").replace("✅", ""), styles['Normal'])
+    story.append(advice_para)
+    story.append(Spacer(1, 0.3*inch))
+    
+    # 检测数据表格
+    data_title = Paragraph("<b>检测数据详情：</b>", styles['Heading3'])
+    story.append(data_title)
+    
+    data_table_data = [
+        ['指标名称', '检测值'],
+        ['HIF1α (pg/mL)', f"{input_data['HIF1α'][0]:.2f}"],
+        ['IL1β (pg/mL)', f"{input_data['IL1β'][0]:.2f}"],
+        ['MMP2 (ng/mL)', f"{input_data['MMP2'][0]:.2f}"],
+        ['DA (ng/mL)', f"{input_data['DA'][0]:.2f}"],
+        ['Lactate (mmol/L)', f"{input_data['Lactate'][0]:.2f}"],
+        ['RORA (pg/mL)', f"{input_data['RORA'][0]:.2f}"],
+        ['缺氧亚型占比', f"{input_data['prop_hypoxia'][0]:.2%}"],
+        ['炎症亚型占比', f"{input_data['prop_inflammation'][0]:.2%}"],
+        ['多巴胺亚型占比', f"{input_data['prop_DA'][0]:.2%}"],
+        ['代谢亚型占比', f"{input_data['prop_metabolism'][0]:.2%}"],
+        ['离焦亚型占比', f"{input_data['prop_defocus'][0]:.2%}"]
+    ]
+    
+    data_table = Table(data_table_data, colWidths=[2*inch, 2*inch])
+    data_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    story.append(data_table)
+    story.append(Spacer(1, 0.3*inch))
+    
+    # 免责声明
+    disclaimer = Paragraph("<i>注：本报告结果仅供参考，不构成医疗诊断建议。如有疑问，请咨询专业医师。</i>", styles['Normal'])
+    story.append(disclaimer)
+    
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
 
 
 # ===================== 4. 界面增强：新增功能 + 优化布局 =====================
@@ -164,6 +334,12 @@ if predict_btn:
         risk_prob = model.predict_proba(input_scaled)[0, 1]
         risk_score = calculate_risk_score(risk_prob)
         risk_level, color, advice = get_risk_level(risk_score)
+        
+        # 生成雷达图
+        fig1, fig2 = create_radar_chart(input_data, risk_score)
+        
+        # 生成PDF报告
+        pdf_buffer = generate_pdf_report(input_data, risk_score, risk_level, advice, risk_prob)
 
     # 结果展示（增强视觉效果 + 新增专业建议）
     st.markdown("### 📈 风险评估结果")
@@ -177,10 +353,33 @@ if predict_btn:
     st.markdown(f"<div style='background-color:#f0f2f6; padding:15px; border-radius:8px'>{advice}</div>",
                 unsafe_allow_html=True)
 
+    # 新增：雷达图展示
+    st.markdown("### 📊 数据可视化分析")
+    col_chart1, col_chart2 = st.columns(2)
+    with col_chart1:
+        st.plotly_chart(fig1, use_container_width=True)
+    with col_chart2:
+        st.plotly_chart(fig2, use_container_width=True)
+
     # 新增：概率详情（可选查看）
     with st.expander("🔍 查看详细概率（高级）"):
         st.markdown(f"- 高危概率：{risk_prob:.3f} ({risk_prob * 100:.1f}%)")
         st.markdown(f"- 低危概率：{1 - risk_prob:.3f} ({(1 - risk_prob) * 100:.1f}%)")
+
+    # 新增：PDF报告下载
+    st.markdown("---")
+    st.markdown("### 📥 下载评估报告")
+    col_download = st.columns(1)[0]
+    with col_download:
+        pdf_bytes = pdf_buffer.getvalue()
+        st.download_button(
+            label="📄 下载完整评估报告 (PDF)",
+            data=pdf_bytes,
+            file_name=f"近视风险评估报告_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+            mime="application/pdf",
+            type="primary",
+            use_container_width=True
+        )
 
 # 底部：新增数据重置按钮
 if st.button("🔄 重置输入数据", use_container_width=True):
