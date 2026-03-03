@@ -8,9 +8,11 @@ import plotly.graph_objects as go
 import io
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 from reportlab.lib.units import inch
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 import base64
 import tempfile
 import os
@@ -170,14 +172,54 @@ def generate_pdf_report(input_data, risk_score, risk_level, advice, risk_prob):
     styles = getSampleStyleSheet()
     story = []
     
+    # 注册中文字体
+    try:
+        # 尝试使用常见的中文字体
+        pdfmetrics.registerFont(TTFont('SimSun', 'SimSun.ttf'))
+        pdfmetrics.registerFont(TTFont('SimHei', 'SimHei.ttf'))
+        chinese_font = 'SimHei'
+    except:
+        try:
+            # Linux环境下的中文字体
+            pdfmetrics.registerFont(TTFont('NotoSansCJK', '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc'))
+            chinese_font = 'NotoSansCJK'
+        except:
+            # 回退到默认字体
+            chinese_font = 'Helvetica'
+    
+    # 创建支持中文的样式
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Title'],
+        fontName=chinese_font,
+        fontSize=18,
+        alignment=1,  # 居中
+    )
+    
+    normal_style = ParagraphStyle(
+        'CustomNormal',
+        parent=styles['Normal'],
+        fontName=chinese_font,
+        fontSize=11,
+        leading=16,
+    )
+    
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading3'],
+        fontName=chinese_font,
+        fontSize=14,
+        spaceBefore=12,
+    )
+    
     # 标题
-    title = Paragraph("近视风险评估报告", styles['Title'])
+    title = Paragraph("Myopia Risk Assessment Report", title_style)
     story.append(title)
     story.append(Spacer(1, 0.2*inch))
     
     # 报告时间
-    date_str = datetime.now().strftime("%Y年%m月%d日 %H:%M:%S")
-    date_para = Paragraph(f"<b>评估时间：</b>{date_str}", styles['Normal'])
+    date_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    date_para = Paragraph(f"<b>Assessment Time:</b> {date_str}", normal_style)
     story.append(date_para)
     story.append(Spacer(1, 0.2*inch))
     
@@ -189,60 +231,62 @@ def generate_pdf_report(input_data, risk_score, risk_level, advice, risk_prob):
     else:
         risk_color_name = "green"
     
-    score_title = Paragraph(f"<b>风险评分：</b><font color='{risk_color_name}'>{risk_score}分</font>", styles['Normal'])
+    score_title = Paragraph(f"<b>Risk Score:</b> <font color='{risk_color_name}'>{risk_score}</font>", normal_style)
     story.append(score_title)
     
-    level_title = Paragraph(f"<b>风险等级：</b><font color='{risk_color_name}'>{risk_level}</font>", styles['Normal'])
+    level_title = Paragraph(f"<b>Risk Level:</b> <font color='{risk_color_name}'>{risk_level}</font>", normal_style)
     story.append(level_title)
     story.append(Spacer(1, 0.2*inch))
     
     # 概率详情
-    prob_para = Paragraph(f"<b>高危概率：</b>{risk_prob*100:.1f}%", styles['Normal'])
+    prob_para = Paragraph(f"<b>High Risk Probability:</b> {risk_prob*100:.1f}%", normal_style)
     story.append(prob_para)
-    prob_para2 = Paragraph(f"<b>低危概率：</b>{(1-risk_prob)*100:.1f}%", styles['Normal'])
+    prob_para2 = Paragraph(f"<b>Low Risk Probability:</b> {(1-risk_prob)*100:.1f}%", normal_style)
     story.append(prob_para2)
     story.append(Spacer(1, 0.3*inch))
     
     # 建议
-    advice_title = Paragraph("<b>专业建议：</b>", styles['Heading3'])
+    advice_title = Paragraph("<b>Professional Advice:</b>", heading_style)
     story.append(advice_title)
-    advice_para = Paragraph(advice.replace("⚠️", "").replace("🔔", "").replace("✅", ""), styles['Normal'])
+    advice_clean = advice.replace("⚠️", "").replace("🔔", "").replace("✅", "")
+    advice_para = Paragraph(advice_clean, normal_style)
     story.append(advice_para)
     story.append(Spacer(1, 0.3*inch))
     
     # 检测数据表格
-    data_title = Paragraph("<b>检测数据详情：</b>", styles['Heading3'])
+    data_title = Paragraph("<b>Detection Data Details:</b>", heading_style)
     story.append(data_title)
     
     data_table_data = [
-        ['指标名称', '检测值'],
-        ['HIF1α (pg/mL)', f"{input_data['HIF1α'][0]:.2f}"],
-        ['IL1β (pg/mL)', f"{input_data['IL1β'][0]:.2f}"],
+        ['Indicator Name', 'Detection Value'],
+        ['HIF1a (pg/mL)', f"{input_data['HIF1α'][0]:.2f}"],
+        ['IL1b (pg/mL)', f"{input_data['IL1β'][0]:.2f}"],
         ['MMP2 (ng/mL)', f"{input_data['MMP2'][0]:.2f}"],
         ['DA (ng/mL)', f"{input_data['DA'][0]:.2f}"],
         ['Lactate (mmol/L)', f"{input_data['Lactate'][0]:.2f}"],
         ['RORA (pg/mL)', f"{input_data['RORA'][0]:.2f}"],
-        ['缺氧亚型占比', f"{input_data['prop_hypoxia'][0]:.2%}"],
-        ['炎症亚型占比', f"{input_data['prop_inflammation'][0]:.2%}"],
-        ['多巴胺亚型占比', f"{input_data['prop_DA'][0]:.2%}"],
-        ['代谢亚型占比', f"{input_data['prop_metabolism'][0]:.2%}"],
-        ['离焦亚型占比', f"{input_data['prop_defocus'][0]:.2%}"]
+        ['Hypoxia Proportion', f"{input_data['prop_hypoxia'][0]:.2%}"],
+        ['Inflammation Proportion', f"{input_data['prop_inflammation'][0]:.2%}"],
+        ['Dopamine Proportion', f"{input_data['prop_DA'][0]:.2%}"],
+        ['Metabolism Proportion', f"{input_data['prop_metabolism'][0]:.2%}"],
+        ['Defocus Proportion', f"{input_data['prop_defocus'][0]:.2%}"]
     ]
     
-    data_table = Table(data_table_data, colWidths=[2*inch, 2*inch])
+    data_table = Table(data_table_data, colWidths=[2.5*inch, 2*inch])
     data_table.setStyle(TableStyle([
         ('FONTSIZE', (0, 0), (-1, -1), 10),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('GRID', (0, 0), (-1, -1), 1, '#000000'),
         ('ROWBACKGROUNDS', (0, 0), (-1, -1), ['#EEEEEE', '#FFFFFF']),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
         ('FONTNAME', (0, 0), (1, 0), 'Helvetica-Bold'),
     ]))
     story.append(data_table)
     story.append(Spacer(1, 0.3*inch))
     
     # 免责声明
-    disclaimer = Paragraph("<i>注：本报告结果仅供参考，不构成医疗诊断建议。如有疑问，请咨询专业医师。</i>", styles['Normal'])
+    disclaimer = Paragraph("Note: This report is for reference only and does not constitute medical diagnosis advice. Please consult a professional physician if you have any questions.", normal_style)
     story.append(disclaimer)
     
     doc.build(story)
